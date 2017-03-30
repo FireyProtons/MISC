@@ -1,0 +1,465 @@
+
+<HTML>
+<HEAD>
+<TITLE>Bennet's Resistor Ratio Calculator</TITLE>
+<META http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+<META name="Author" content="Bennet Blake">
+<META name="keywords" content="resistor, ratio, calculator, JavaScript">
+<META name="GENERATOR" Content="CodeWright 7.0 - It Rocks!">
+<link rel="SHORTCUT ICON" href="../SL_grid.ico">
+<SCRIPT LANGUAGE="JavaScript">
+<!--
+  res10per = new Array( 1.0, 1.2, 1.5, 1.8, 2.2, 2.7, 3.3, 3.9, 4.7, 5.6, 6.8, 8.2 )
+  res05per = new Array( 1.0, 1.1, 1.2, 1.3, 1.5, 1.6, 1.8, 2.0, 2.2, 2.4, 2.7, 3.0, 
+                        3.3, 3.6, 3.9, 4.3, 4.7, 5.1, 5.6, 6.2, 6.8, 7.5, 8.2, 9.1 )
+  res01per = new Array( 1.00, 1.02, 1.05, 1.07, 1.10, 1.13, 1.15, 1.18, 1.21, 1.24, 
+                        1.27, 1.30, 1.33, 1.37, 1.40, 1.43, 1.47, 1.50, 1.54, 1.58,
+                        1.62, 1.65, 1.69, 1.74, 1.78, 1.82, 1.87, 1.91, 1.96, 2.00,
+                        2.05, 2.10, 2.15, 2.21, 2.26, 2.32, 2.37, 2.43, 2.49, 2.55,
+                        2.61, 2.67, 2.74, 2.80, 2.87, 2.94, 3.01, 3.09, 3.16, 3.24,
+                        3.32, 3.40, 3.48, 3.57, 3.65, 3.74, 3.83, 3.92, 4.02, 4.12,
+                        4.22, 4.32, 4.42, 4.53, 4.64, 4.75, 4.87, 4.99, 5.11, 5.23,
+                        5.36, 5.49, 5.62, 5.76, 5.90, 6.04, 6.19, 6.34, 6.49, 6.65,
+                        6.81, 6.98, 7.15, 7.32, 7.50, 7.68, 7.87, 8.06, 8.25, 8.45,
+                        8.66, 8.87, 9.09, 9.31, 9.53, 9.76 )
+
+  var desired_ratio, test_ratio
+  var best_first_res, best_second_res, first_res, second_res, test_error, least_error
+  var scale_factor, R1, R2, dec_precision
+
+  // print out the full resistor tables in a second pop up window
+  function print_table()
+  {
+    var ii
+    win2 = open("text/html")
+    win2.document.open("text/html")
+    win2.document.write("<H1>Resistor Table</H1><BR><H3>10% Resistor Values</H3>")
+    for( ii = 0; ii< res10per.length; ii++ ) win2.document.write( res10per[ii],", " )
+    win2.document.write("<BR><H3>5% Resistor Values</H3>")
+    for( ii = 0; ii< res05per.length; ii++ ) win2.document.write( res05per[ii],", " )
+    win2.document.write("<BR><H3>1% Resistor Values</H3>")
+    for( ii = 0; ii< res01per.length; ii++ ) win2.document.write( res01per[ii],", " )
+  }
+
+  //////////////////////////////////////////////////////////////////
+  // scale the desired ratio to be 1.0 <= ratio < 10.0
+  // scale factor will be what the results need to multiplied by 
+  // to get back to the origional order of magnitude
+  //////////////////////////////////////////////////////////////////
+  function scale_ratio()
+  {
+    dec_precision = 4  // four digits of precision after decimal point
+    scale_factor = 1.0
+    if( desired_ratio < 1.0 )
+    do
+    {
+      dec_precision += 1    // keep adding precision as we get smaller
+      desired_ratio *= 10.0
+      scale_factor /= 10.0
+    } while( desired_ratio < 1.0 ) 
+    else
+    {
+      if( desired_ratio >= 10.0 )
+      do
+      {
+        desired_ratio /= 10.0
+        scale_factor *= 10.0
+      } while( desired_ratio >= 10.0  )
+    }
+	}
+
+  ///////////////////////////////////
+  // calculate the 10% values
+  ///////////////////////////////////
+  function calc_10_percent()
+  {
+    var ii, jj
+
+    least_error = 100.0
+    for( ii=0; ii<12; ii++ )
+    {
+      first_res = res10per[ii]
+      for( jj=0; jj<12; jj++ )
+      {
+        second_res = res10per[jj]
+        if( first_res < second_res ) first_res *= 10.0
+        test_ratio = first_res / second_res
+        test_error = ( test_ratio - desired_ratio ) / desired_ratio
+        if( Math.abs(test_error) < Math.abs(least_error) )
+        {
+          least_error = test_error
+          if( scale_factor >= 10.0 )
+            best_first_res = first_res * scale_factor
+          else
+            best_first_res = first_res
+          if( scale_factor < 1.0 )
+            best_second_res = second_res / scale_factor
+          else
+            best_second_res = second_res
+        }
+      }
+    }
+
+    // now write out the results
+	  document.rr_calc.b10_R1.value = best_first_res
+    document.rr_calc.b10_R2.value = best_second_res
+    document.rr_calc.b10_error.value = (least_error * 100.0).toFixed(2)
+    document.rr_calc.b10_ratio.value = (best_first_res / best_second_res).toFixed(dec_precision)
+
+    // now do the error calculations
+
+    // first the 10% high side
+    R1 = 1.10 * best_first_res
+    R2 = 0.9 * best_second_res
+    test_error = ((R1/R2)-(desired_ratio*scale_factor)) / (desired_ratio*scale_factor)
+    test_error *= 100
+    
+    document.rr_calc.wcp10_R1.value = R1.toFixed(2)
+    document.rr_calc.wcp10_R2.value = R2.toFixed(2)
+    document.rr_calc.wcp10_error.value = test_error.toFixed(1)
+    document.rr_calc.wcp10_ratio.value = (R1/R2).toFixed(dec_precision)
+
+    // now the 10% low side
+    R1 = 0.9 * best_first_res
+    R2 = 1.10 * best_second_res
+    test_error = ((R1/R2)-(desired_ratio*scale_factor)) / (desired_ratio*scale_factor)
+    test_error *= 100
+    
+    document.rr_calc.wcn10_R1.value = R1.toFixed(2)
+    document.rr_calc.wcn10_R2.value = R2.toFixed(2)
+    document.rr_calc.wcn10_error.value = test_error.toFixed(1)
+    document.rr_calc.wcn10_ratio.value = (R1/R2).toFixed(dec_precision)
+
+    // then the 5% high side
+    R1 = 1.05 * best_first_res
+    R2 = 0.95 * best_second_res
+    test_error = ((R1/R2)-(desired_ratio*scale_factor)) / (desired_ratio*scale_factor)
+    test_error *= 100
+    
+    document.rr_calc.wcp105_R1.value = R1.toFixed(2)
+    document.rr_calc.wcp105_R2.value = R2.toFixed(2)
+    document.rr_calc.wcp105_error.value = test_error.toFixed(1)
+    document.rr_calc.wcp105_ratio.value = (R1/R2).toFixed(dec_precision)
+
+    // and the 5% low side
+    R1 = 0.95 * best_first_res
+    R2 = 1.05 * best_second_res
+    test_error = ((R1/R2)-(desired_ratio*scale_factor)) / (desired_ratio*scale_factor)
+    test_error *= 100
+    
+    document.rr_calc.wcn105_R1.value = R1.toFixed(2)
+    document.rr_calc.wcn105_R2.value = R2.toFixed(2)
+    document.rr_calc.wcn105_error.value = test_error.toFixed(1)
+    document.rr_calc.wcn105_ratio.value = (R1/R2).toFixed(dec_precision)
+
+  }                       
+
+  /////////////////////////////////
+  // calculate the 5% table
+  /////////////////////////////////
+  function calc_5_percent()
+  {
+    var ii, jj
+
+    least_error = 100.0
+    for( ii=0; ii<24; ii++ )
+    {
+      first_res = res05per[ii]
+      for( jj=0; jj<24; jj++ )
+      {
+        second_res = res05per[jj]
+        if( first_res < second_res ) first_res *= 10.0
+        test_ratio = first_res / second_res
+        test_error = ( test_ratio - desired_ratio ) / desired_ratio
+        if( Math.abs(test_error) < Math.abs(least_error) )
+        {
+          least_error = test_error
+          if( scale_factor >= 10.0 )
+            best_first_res = first_res * scale_factor
+          else
+            best_first_res = first_res
+          if( scale_factor < 1.0 )
+            best_second_res = second_res / scale_factor
+          else
+            best_second_res = second_res
+        }
+      }
+    }
+
+    // now write out the results
+	  document.rr_calc.b5_R1.value = best_first_res
+    document.rr_calc.b5_R2.value = best_second_res
+    document.rr_calc.b5_error.value = (least_error * 100.0).toFixed(2)
+    document.rr_calc.b5_ratio.value = (best_first_res / best_second_res).toFixed(dec_precision)
+
+    // now do the error calculations
+
+    // first the 5% high side
+    R1 = 1.05 * best_first_res
+    R2 = 0.95 * best_second_res
+    test_error = ((R1/R2)-(desired_ratio*scale_factor)) / (desired_ratio*scale_factor)
+    test_error *= 100
+    
+    document.rr_calc.wcp5_R1.value = R1.toFixed(2)
+    document.rr_calc.wcp5_R2.value = R2.toFixed(2)
+    document.rr_calc.wcp5_error.value = test_error.toFixed(2)
+    document.rr_calc.wcp5_ratio.value = (R1/R2).toFixed(dec_precision)
+
+    // now the 5% low side
+    R1 = 0.95 * best_first_res
+    R2 = 1.05 * best_second_res
+    test_error = ((R1/R2)-(desired_ratio*scale_factor)) / (desired_ratio*scale_factor)
+    test_error *= 100
+    
+    document.rr_calc.wcn5_R1.value = R1.toFixed(2)
+    document.rr_calc.wcn5_R2.value = R2.toFixed(2)
+    document.rr_calc.wcn5_error.value = test_error.toFixed(2)
+    document.rr_calc.wcn5_ratio.value = (R1/R2).toFixed(dec_precision)
+
+    // then the 3% high side
+    R1 = 1.03 * best_first_res
+    R2 = 0.97 * best_second_res
+    test_error = ((R1/R2)-(desired_ratio*scale_factor)) / (desired_ratio*scale_factor)
+    test_error *= 100
+    
+    document.rr_calc.wcp3_R1.value = R1.toFixed(2)
+    document.rr_calc.wcp3_R2.value = R2.toFixed(2)
+    document.rr_calc.wcp3_error.value = test_error.toFixed(2)
+    document.rr_calc.wcp3_ratio.value = (R1/R2).toFixed(dec_precision)
+
+    // and the 3% low side
+    R1 = 0.97 * best_first_res
+    R2 = 1.03 * best_second_res
+    test_error = ((R1/R2)-(desired_ratio*scale_factor)) / (desired_ratio*scale_factor)
+    test_error *= 100
+    
+    document.rr_calc.wcn3_R1.value = R1.toFixed(2)
+    document.rr_calc.wcn3_R2.value = R2.toFixed(2)
+    document.rr_calc.wcn3_error.value = test_error.toFixed(2)
+    document.rr_calc.wcn3_ratio.value = (R1/R2).toFixed(dec_precision)
+  }
+
+
+  /////////////////////////////////
+  // calculate the 1% table
+  /////////////////////////////////
+  function calc_1_percent()
+  {
+    var ii, jj
+
+    least_error = 100.0
+    for( ii=0; ii<96; ii++ )
+    {
+      first_res = res01per[ii]
+      for( jj=0; jj<96; jj++ )
+      {
+        second_res = res01per[jj]
+        if( first_res < second_res ) first_res *= 10.0
+        test_ratio = first_res / second_res
+        test_error = ( test_ratio - desired_ratio ) / desired_ratio
+        if( Math.abs(test_error) < Math.abs(least_error) )
+        {
+          least_error = test_error
+          if( scale_factor >= 10.0 )
+            best_first_res = first_res * scale_factor
+          else
+            best_first_res = first_res
+          if( scale_factor < 1.0 )
+            best_second_res = second_res / scale_factor
+          else
+            best_second_res = second_res
+        }
+      }
+    }
+
+    // now write out the results
+	  document.rr_calc.b1_R1.value = best_first_res
+    document.rr_calc.b1_R2.value = best_second_res
+    document.rr_calc.b1_error.value = (least_error * 100.0).toFixed(4)
+    document.rr_calc.b1_ratio.value = (best_first_res / best_second_res).toFixed(dec_precision)
+
+    // now do the error calculations
+
+    // first the 1% high side
+    R1 = 1.01 * best_first_res
+    R2 = 0.99 * best_second_res
+    test_error = ((R1/R2)-(desired_ratio*scale_factor)) / (desired_ratio*scale_factor)
+    test_error *= 100
+    
+    document.rr_calc.wcp1_R1.value = R1.toFixed(3)
+    document.rr_calc.wcp1_R2.value = R2.toFixed(3)
+    document.rr_calc.wcp1_error.value = test_error.toFixed(3)
+    document.rr_calc.wcp1_ratio.value = (R1/R2).toFixed(dec_precision+2)
+
+    // now the 1% low side
+    R1 = 0.99 * best_first_res
+    R2 = 1.01 * best_second_res
+    test_error = ((R1/R2)-(desired_ratio*scale_factor)) / (desired_ratio*scale_factor)
+    test_error *= 100
+    
+    document.rr_calc.wcn1_R1.value = R1.toFixed(3)
+    document.rr_calc.wcn1_R2.value = R2.toFixed(3)
+    document.rr_calc.wcn1_error.value = test_error.toFixed(3)
+    document.rr_calc.wcn1_ratio.value = (R1/R2).toFixed(dec_precision+2)
+
+  }
+  
+  ////////////////////////////////////////////////////////
+  // calcualte the whole table based on the input ratio
+  ////////////////////////////////////////////////////////
+  function calc_table()
+  {
+    desired_ratio =  parseFloat(document.rr_calc.des_RATIO.value)
+    scale_ratio()
+    calc_10_percent()
+    calc_5_percent()
+    calc_1_percent()
+    document.rr_calc.des_RATIO.focus()  // put the cursor back in the entry box
+  }
+
+// -->
+</SCRIPT>
+</HEAD>
+<BODY background="../links/graph_paper.gif" bgcolor=abbfe0 text=000080 link=0000ff vlink=4040c0> 
+
+  <H1>Resistor Ratio Calculator</H1>
+  <FORM NAME="rr_calc">
+  <TABLE BORDER="1" ALIGN="CENTER" WIDTH="100%">
+  <TR>
+    <TD WIDTH="20%"><B>Desired Ratio (R1/R2):</B></TD>
+    <TD COLSPAN="2"><INPUT TYPE="TEXT" NAME="des_RATIO" VALUE="1.0"></TD>
+	<TD><INPUT TYPE="BUTTON" NAME="Calc" VALUE="Calculate"  ONCLICK="calc_table()"></TD>
+	<TD><INPUT TYPE="BUTTON" NAME="pop_tab" VALUE="Pop Resistor Table"  ONCLICK="print_table()"></TD>
+  </TR>
+  <TR>
+    <TD >&nbsp;</TD>
+    <TD ><B>R1</B></TD>
+    <TD ><B>R2</B></TD>
+    <TD ><B>Error %</B></TD>
+    <TD ><B>R1/R2</B></TD>
+  </TR>
+  <TR>
+    <TD ><B>Best 10%</B></TD>
+    <TD ><INPUT TYPE="TEXT" NAME="b10_R1" ></TD>
+    <TD ><INPUT TYPE="TEXT" NAME="b10_R2" ></TD>
+    <TD ><INPUT TYPE="TEXT" NAME="b10_error"  ></TD>
+    <TD ><INPUT TYPE="TEXT" NAME="b10_ratio"  ></TD>
+  </TR>
+  <TR>
+    <TD >Worst Case +10%</TD>
+    <TD ><INPUT TYPE="TEXT" NAME="wcp10_R1" ></TD>
+    <TD ><INPUT TYPE="TEXT" NAME="wcp10_R2" ></TD>
+    <TD ><INPUT TYPE="TEXT" NAME="wcp10_error" ></TD>
+    <TD ><INPUT TYPE="TEXT" NAME="wcp10_ratio" ></TD>
+  </TR>
+  <TR>
+    <TD >Worst Case -10%</TD>
+    <TD ><INPUT TYPE="TEXT" NAME="wcn10_R1" ></TD>
+    <TD ><INPUT TYPE="TEXT" NAME="wcn10_R2" ></TD>
+    <TD ><INPUT TYPE="TEXT" NAME="wcn10_error" ></TD>
+    <TD ><INPUT TYPE="TEXT" NAME="wcn10_ratio" ></TD>
+  </TR>
+  <TR>
+    <TD >Worst Case +5%</TD>
+    <TD ><INPUT TYPE="TEXT" NAME="wcp105_R1" ></TD>
+    <TD ><INPUT TYPE="TEXT" NAME="wcp105_R2" ></TD>
+    <TD ><INPUT TYPE="TEXT" NAME="wcp105_error" ></TD>
+    <TD ><INPUT TYPE="TEXT" NAME="wcp105_ratio" ></TD>
+  </TR>
+  <TR>
+    <TD >Worst Case -5%</TD>
+    <TD ><INPUT TYPE="TEXT" NAME="wcn105_R1" ></TD>
+    <TD ><INPUT TYPE="TEXT" NAME="wcn105_R2" ></TD>
+    <TD ><INPUT TYPE="TEXT" NAME="wcn105_error" ></TD>
+    <TD ><INPUT TYPE="TEXT" NAME="wcn105_ratio" ></TD>
+  </TR>
+  <TR>
+    <TD >&nbsp;</TD>
+    <TD >&nbsp;</TD>
+    <TD >&nbsp;</TD>
+    <TD >&nbsp;</TD>
+    <TD >&nbsp;</TD>
+  </TR>
+  <TR>
+    <TD ><B>Best 5%</B></TD>
+    <TD ><INPUT TYPE="TEXT" NAME="b5_R1" ></TD>
+    <TD ><INPUT TYPE="TEXT" NAME="b5_R2" ></TD>
+    <TD ><INPUT TYPE="TEXT" NAME="b5_error" ></TD>
+    <TD ><INPUT TYPE="TEXT" NAME="b5_ratio" ></TD>
+  </TR>
+  <TR>
+    <TD >Worst Case +5%</TD>
+    <TD ><INPUT TYPE="TEXT" NAME="wcp5_R1" ></TD>
+    <TD ><INPUT TYPE="TEXT" NAME="wcp5_R2" ></TD>
+    <TD ><INPUT TYPE="TEXT" NAME="wcp5_error" ></TD>
+    <TD ><INPUT TYPE="TEXT" NAME="wcp5_ratio" ></TD>
+  </TR>
+  <TR>
+    <TD >Worst Case -5%</TD>
+    <TD ><INPUT TYPE="TEXT" NAME="wcn5_R1" ></TD>
+    <TD ><INPUT TYPE="TEXT" NAME="wcn5_R2" ></TD>
+    <TD ><INPUT TYPE="TEXT" NAME="wcn5_error" ></TD>
+    <TD ><INPUT TYPE="TEXT" NAME="wcn5_ratio" ></TD>
+  </TR>
+  <TR>
+    <TD >Worst Case +3%</TD>
+    <TD ><INPUT TYPE="TEXT" NAME="wcp3_R1" ></TD>
+    <TD ><INPUT TYPE="TEXT" NAME="wcp3_R2" ></TD>
+    <TD ><INPUT TYPE="TEXT" NAME="wcp3_error" ></TD>
+    <TD ><INPUT TYPE="TEXT" NAME="wcp3_ratio" ></TD>
+  </TR>
+  <TR>
+    <TD >Worst Case -3%</TD>
+    <TD ><INPUT TYPE="TEXT" NAME="wcn3_R1" ></TD>
+    <TD ><INPUT TYPE="TEXT" NAME="wcn3_R2" ></TD>
+    <TD ><INPUT TYPE="TEXT" NAME="wcn3_error" ></TD>
+    <TD ><INPUT TYPE="TEXT" NAME="wcn3_ratio" ></TD>
+  </TR>
+  <TR>
+    <TD >&nbsp;</TD>
+    <TD >&nbsp;</TD>
+    <TD >&nbsp;</TD>
+    <TD >&nbsp;</TD>
+    <TD >&nbsp;</TD>
+  </TR>
+  <TR>
+    <TD ><B>Best 1%</B></TD>
+    <TD ><INPUT TYPE="TEXT" NAME="b1_R1" ></TD>
+    <TD ><INPUT TYPE="TEXT" NAME="b1_R2" ></TD>
+    <TD ><INPUT TYPE="TEXT" NAME="b1_error" ></TD>
+    <TD ><INPUT TYPE="TEXT" NAME="b1_ratio" ></TD>
+  </TR>
+  <TR>
+    <TD >Worst Case +1%</TD>
+    <TD ><INPUT TYPE="TEXT" NAME="wcp1_R1" ></TD>
+    <TD ><INPUT TYPE="TEXT" NAME="wcp1_R2" ></TD>
+    <TD ><INPUT TYPE="TEXT" NAME="wcp1_error" ></TD>
+    <TD ><INPUT TYPE="TEXT" NAME="wcp1_ratio" ></TD>
+  </TR>
+  <TR>
+    <TD >Worst Case -1%</TD>
+    <TD ><INPUT TYPE="TEXT" NAME="wcn1_R1" ></TD>
+    <TD ><INPUT TYPE="TEXT" NAME="wcn1_R2" ></TD>
+    <TD ><INPUT TYPE="TEXT" NAME="wcn1_error" ></TD>
+    <TD ><INPUT TYPE="TEXT" NAME="wcn1_ratio" ></TD>
+  </TR>
+</TABLE>
+</FORM>
+<CENTER>
+<center>
+Back to <a href="../index.html">StratoLoft</a> ---- Back to <a href="tdsgn.html">Tele::Design</a><br>
+<br><SMALL>
+Copyright &copy; 1987-2003 by Bennet Blake<BR>
+Version 1.4 - Last fiddeled with 21-Apr-2003</SMALL></CENTER>
+
+<SCRIPT LANGUAGE="JavaScript">
+<!--
+  document.rr_calc.des_RATIO.focus()
+//  document.rr_calc.calc.focus()
+// -->
+</SCRIPT>
+
+</BODY>
+</HTML>
+
+
